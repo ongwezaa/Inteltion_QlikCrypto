@@ -1,0 +1,32 @@
+This README provides instructions for implementing user-defined transformations in Attunity Replicate.
+
+1.) 	Create a shared library that implements the following exported initialization function:
+
+	typedef int AR_ADDON_INIT_FUNC(AR_ADDON_CONTEXT *context);
+
+	All of the types and prototypes are defined in the ar_addon.h and ar_addon_transformation.h files located under <installation_dir>\addons\include
+
+2.)	Copy the shared library to <installation_dir>\addons\<addon_name>\<addon_name>.[dll/so]
+
+3.)	Register the library in the addons_def.json file located under <installation_dir>\addons
+
+	{
+		"addons": [{
+			"name": "MyTransformation",
+			"type": "STARTUP",
+			"lib_path": "MyTransformation/MyTransformation.dll",
+			"init_function": "my_transformation_init_func"
+		}]
+	}
+
+4.)	Register the new function in the addon initialization function (mentioned in Step 1) as follows:
+
+	USER_DEFINED_TRANSFORMATION_DEF	*transdef = GET_AR_AO_TRANSFORMATION_DEF();
+	transdef->displayName = "prefix_with(X, Y)";
+	transdef->functionName = "prefix_with";
+	transdef->description = "prefix_with adds the prefix <Y_> to a given string X";
+	transdef->func = trans_prefix_with;
+	transdef->nArgs = 2;
+	AR_AO_REGISRATION->register_user_defined_transformation(transdef);
+
+	The new "prefix_with" function will be available in the Replicate Expression Builder under Functions->User Defined.

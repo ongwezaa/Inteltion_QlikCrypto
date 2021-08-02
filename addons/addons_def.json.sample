@@ -1,0 +1,19 @@
+{
+	"addons":	
+	[
+		{
+			"name":	"MyPasswordProvider",
+			"type": "STARTUP",
+			//"lib_path": "samples\\MyPasswordProvider\\MyPasswordProvider.dll",
+			//"lib_path": "samples/MyPasswordProvider/MyPasswordProvider.so",
+			"init_function":	"ar_addon_init"	
+		},
+		{
+			"name": "MyTransformation",
+			"type": "STARTUP",
+			//"lib_path": "samples\\MyTransformation\\MyTransformation.dll",
+			//"lib_path": "samples/MyTransformation/MyTransformation.so",
+			"init_function": "ar_addon_init"
+		}
+	]
+}
