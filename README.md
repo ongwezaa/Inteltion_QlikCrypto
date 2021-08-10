@@ -46,3 +46,25 @@ All variable is hard code at top of file
 3. Build DLL: configured solution as "Release" mode with "x64" and build solution. DLL file will be created at "addons\MyTransformation\MyTransformation.dll"
 
 
+
+# Register library at Qlik Replicate
+
+Step 1: Go to path that Qlik Replicate was installed.
+
+Step 2: Go to folder "addons".
+
+Step 3: Copy folder "MyTransformation" from source code in above step which contain dll file and placed to folder "addons" in server.
+
+Step 4: edit json file "addons_def.json" which it used for registration addons dll.
+- Edit "lib_path" to "MyTransformation\\MyTransformation.dll" that it will link to dll file in step 3.
+- Another configs set as default.
+
+Step 5: Copy folder "lib" and "include" from source code and placed in folder "addons"
+
+Step 6: Stop and Start Qlik Replicate service
+
+Step 7: Qlik will register addons and you can see registered log at folder "data\log"
+
+
+------
+
