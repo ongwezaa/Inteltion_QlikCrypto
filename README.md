@@ -58,6 +58,7 @@ Step 3: Copy folder "MyTransformation" from source code in above step which cont
 Step 4: edit json file "addons_def.json" which it used for registration addons dll.
 - Edit "lib_path" to "MyTransformation\\MyTransformation.dll" that it will link to dll file in step 3.
 - Another configs set as default.
+
 ![5](https://user-images.githubusercontent.com/54891949/128848949-6698cca2-5249-4923-8af2-997059f6b677.jpg)
 
 Step 5: Copy folder "lib" and "include" from source code and placed in folder "addons"
