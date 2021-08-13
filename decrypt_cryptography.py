@@ -12,6 +12,7 @@ ciphertext = base64.b64decode(encryptedData)
 cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
 
 decryptor = cipher.decryptor()
+
 decryptedText = decryptor.update(ciphertext) + decryptor.finalize()
 
 print (decryptedText.decode('utf-8'))
