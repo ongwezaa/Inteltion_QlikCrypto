@@ -26,12 +26,15 @@ Source code description:
 2. Main function
 - ar_addon_init: used for initialize and register function in Qlik Replicate console as user defined function in transform tab.
 
-![3](https://user-images.githubusercontent.com/54891949/128846351-b38f0170-7b93-48ca-8ba0-bcd77893d6cb.jpg)
+![11](https://user-images.githubusercontent.com/54891949/130902148-90575703-41d4-446c-873d-557d569fc3b7.jpg)
 
-This function call method "auth_plt_gen_key" in the end which is process for retrieve key vault from Azure key vault and save key to text file.
+This function call method "auth_plt_gen_key" in the end which is process for retrieve key vault from Azure key vault through managed identity and keep key in memory of Qlik addon pool.
 
-All variable is hard code at top of file
-![4](https://user-images.githubusercontent.com/54891949/128846416-27e24581-c95d-4cf4-ab79-a3e7f89dba53.jpg)
+Reference link from Azure tu use managed identity to access key vault 
+https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/tutorial-windows-vm-access-nonaad
+
+All variable is defined at top of file
+![22](https://user-images.githubusercontent.com/54891949/130902625-bfc113fe-f42a-4056-b356-49fce3e2d9e3.jpg)
 
 
 - encrypt_aes: main encryption function called from Qlik Replicate. Flow of this function as below.
