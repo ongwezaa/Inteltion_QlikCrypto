@@ -17,8 +17,10 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-static char* plt_mis_token_uri = "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net";
-static char* plt_mis_kv_uri = "https://plt-kv-vm.vault.azure.net/secrets/aes-kv?api-version=2016-10-01";
+const char* cfFileName = "plt_config.json";
+
+const char* cfMisTokenUri = "plt_mis_token_uri";
+const char* cfMisKvUri = "plt_mis_kv_uri";
 
 const char* poolKeyName = "pltkv";
 
@@ -66,6 +68,25 @@ void removeChar(char* str, char garbage) {
 	*dst = '\0';
 }
 
+char* ltrim(char* s)
+{
+	while (isspace(*s)) s++;
+	return s;
+}
+
+char* rtrim(char* s)
+{
+	char* back = s + strlen(s);
+	while (isspace(*--back));
+	*(back + 1) = '\0';
+	return s;
+}
+
+char* trim(char* s)
+{
+	return rtrim(ltrim(s));
+}
+
 char* get_value_json(char* ptr, char* name) {
 	char* str = "";
 	removeChar(ptr, '{');
@@ -82,7 +103,7 @@ char* get_value_json(char* ptr, char* name) {
 				break;
 			}
 			spltValue++;
-			str = spltValue;
+			str = trim(spltValue);
 		}
 		spltValue = strtok(NULL, ",");
 	}
@@ -122,19 +143,50 @@ char* get_curl_value(struct curl_slist* headers, char* requri, char* name) {
 
 char* auth_plt_gen_key()
 {
+	// Get file config path
+	char* cfPath = concatenate(AR_AO_CONTEXT->addonDir, "\\", cfFileName);
+
+	// Read config file
+	char cf[1024];
+	char cfTmp[1024];
+	FILE* fileCf;
+	size_t nread;
+
+	fileCf = fopen(cfPath, "r");
+	if (fileCf) {
+		while ((nread = fread(cf, 1, sizeof cf, fileCf)) > 0)
+			fwrite(cf, 1, nread, stdout);
+		if (ferror(fileCf)) {
+			/* deal with error */
+		}
+		fclose(fileCf);
+	}
+
+	strcpy(cfTmp, cf);
+	char* cfTokenUri = get_value_json(cfTmp, cfMisTokenUri);
+	AR_AO_LOG->log_trace(cfTokenUri);
+	strcpy(cfTmp, cf);
+	char* cfKvUri = get_value_json(cfTmp, cfMisKvUri);
+	AR_AO_LOG->log_trace(cfKvUri);
+	//
+
+	// Start get key from key vault
 	char* key = "";
 
 	// Get token from managed identity
 	struct curl_slist* tokenHeaders = NULL;
 	tokenHeaders = curl_slist_append(tokenHeaders, "metadata: true");
-	char* token = get_curl_value(tokenHeaders, plt_mis_token_uri, "access_token");
+	char* token = get_curl_value(tokenHeaders, cfTokenUri, "access_token");
 
 	// Get key vault
 	struct curl_slist* kvHeaders = NULL;
 	char* auth = concatenate("Authorization: Bearer ", token, "");
 	kvHeaders = curl_slist_append(kvHeaders, auth);
 
-	key = get_curl_value(kvHeaders, plt_mis_kv_uri, "value");
+	key = get_curl_value(kvHeaders, cfKvUri, "value");
+
+	memset(cf, 0x00, 1024);
+	memset(cfTmp, 0x00, 1024);
 
 	return key;
 }
