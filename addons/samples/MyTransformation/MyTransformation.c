@@ -23,6 +23,8 @@ const char* cfMisTokenUri = "plt_mis_token_uri";
 const char* cfMisKvUri = "plt_mis_kv_uri";
 
 const char* poolKeyName = "pltkv";
+const char* poolKeyVersionName = "pltkvver";
+const char* poolKeyIdName = "pltkvidname";
 
 char* concatenate(char* a, char* b, char* c)
 {
@@ -141,6 +143,33 @@ char* get_curl_value(struct curl_slist* headers, char* requri, char* name) {
 	return str;
 }
 
+int split(const char* txt, char delim, char*** tokens)
+{
+	int* tklen, * t, count = 1;
+	char** arr, * p = (char*)txt;
+
+	while (*p != '\0') if (*p++ == delim) count += 1;
+	t = tklen = calloc(count, sizeof(int));
+	for (p = (char*)txt; *p != '\0'; p++) *p == delim ? *t++ : (*t)++;
+	*tokens = arr = malloc(count * sizeof(char*));
+	t = tklen;
+	p = *arr++ = calloc(*(t++) + 1, sizeof(char*));
+	while (*txt != '\0')
+	{
+		if (*txt == delim)
+		{
+			p = *arr++ = calloc(*(t++) + 1, sizeof(char*));
+			txt++;
+		}
+		else *p++ = *txt++;
+	}
+	free(tklen);
+	return count;
+}
+
+char* keyVersion = "";
+char* keyId = "";
+
 char* auth_plt_gen_key()
 {
 	// Get file config path
@@ -172,6 +201,7 @@ char* auth_plt_gen_key()
 
 	// Start get key from key vault
 	char* key = "";
+	
 
 	// Get token from managed identity
 	struct curl_slist* tokenHeaders = NULL;
@@ -184,6 +214,21 @@ char* auth_plt_gen_key()
 	kvHeaders = curl_slist_append(kvHeaders, auth);
 
 	key = get_curl_value(kvHeaders, cfKvUri, "value");
+	keyVersion = get_curl_value(kvHeaders, cfKvUri, "id");
+
+	char** tokens;
+	int count, i;
+
+	count = split(keyVersion, '/', &tokens);
+	for (i = 0; i < count; i++) {
+		if (i == count - 2) {
+			keyId = tokens[i];
+		}
+	}
+	/* freeing tokens */
+	//for (i = 0; i < count; i++) free(tokens[i]);
+	//free(tokens);
+
 
 	memset(cf, 0x00, 1024);
 	memset(cfTmp, 0x00, 1024);
@@ -279,7 +324,17 @@ unsigned char* base64_decode(const char* data,
 	return decoded_data;
 }
 
-
+#define ASCII_START 32
+#define ASCII_END 126
+char* generateRandomString(int size) {
+	int i;
+	char* res = malloc(size + 1);
+	for (i = 0; i < size; i++) {
+		res[i] = (char)(rand() % (ASCII_END - ASCII_START)) + ASCII_START;
+	}
+	res[i] = '\0';
+	return res;
+}
 
 static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** argv);
 
@@ -302,12 +357,15 @@ AR_AO_EXPORTED int ar_addon_init(AR_ADDON_CONTEXT* context)
 	//char* key = "!A%D*G-KaPdRgUkXp2s5v8y/B?E(H+Mb";
 	char* key = auth_plt_gen_key();
 	AR_AO_MEM->set_ctx(context->addonPool, poolKeyName, key, NULL);
+	AR_AO_MEM->set_ctx(context->addonPool, poolKeyVersionName, keyVersion, NULL);
+	AR_AO_MEM->set_ctx(context->addonPool, poolKeyIdName, (char*)keyId, NULL);
+	AR_AO_LOG->log_trace(keyVersion);
+	AR_AO_LOG->log_trace(keyId);
 	AR_AO_LOG->log_trace("key vault has been saved to addno pool memory");
 	//
 
 	return 0;
 }
-
 
 static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** argv)
 {
@@ -319,24 +377,50 @@ static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** arg
 		param = (char*)AR_AO_SQLITE->sqlite3_value_text(argv[0]);
 		char aes_input[1024] = "";
 
+		
+
+		char* resText = "";
+
 		if (param == NULL || strlen(param) == 0) {
 			AR_AO_SQLITE->sqlite3_result_text(context, "", -1, SQLITE_TRANSIENT);
 		}
 		else {
 			// Get key vault from addon pool memory
 			char* keyctx = "";
+			char* keyverctx = "";
+			char* keyidctx = "";
 			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyName, (void*)&keyctx);
+			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyVersionName, (void*)&keyverctx);
+			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyIdName, (void*)&keyidctx);
 			if (keyctx == "") {
 				//keyctx = "!A%D*G-KaPdRgUkXp2s5v8y/B?E(H+Mb";
 				keyctx = auth_plt_gen_key();
 				AR_AO_MEM->set_ctx(context->addonPool, poolKeyName, keyctx, NULL);
+				AR_AO_MEM->set_ctx(context->addonPool, poolKeyVersionName, keyVersion, NULL);
+				AR_AO_MEM->set_ctx(context->addonPool, poolKeyIdName, keyId, NULL);
+				strcpy((char*)keyverctx, (char*)keyVersion);
+				strcpy((char*)keyidctx, (char*)keyId);
 			}
 			char aes_key[32] = "";
 			strcpy((const char*)aes_key, keyctx);
 			//
 
-			char iv[AES_BLOCK_SIZE] = "0000000000000000";
-			char ivde[AES_BLOCK_SIZE] = "0000000000000000";
+			//char iv[AES_BLOCK_SIZE] = "0000000000000000";
+			//char ivde[AES_BLOCK_SIZE] = "0000000000000000";
+
+			char iv[AES_BLOCK_SIZE];
+			char* ran = generateRandomString(16);
+			//strcpy((char*)iv, ran);
+			memcpy(iv, ran, AES_BLOCK_SIZE);
+			
+			//char iv[AES_BLOCK_SIZE];
+			//RAND_bytes(iv, AES_BLOCK_SIZE);
+
+			//char* rdmiv = generateRandomString(16);
+			//strcpy((char*)iv, (char*)rdmiv);
+
+			long ivSize = 16;
+			char* ivBase64 = base64_encode(ran, ivSize, &ivSize);
 
 			paramTmp = concatenate(param, " ", "");
 
@@ -357,10 +441,23 @@ static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** arg
 			memset(param, 0x00, sizeof(param));
 			memset(paramTmp, 0x00, sizeof(paramTmp));
 
-			AR_AO_SQLITE->sqlite3_result_text(context, encoded_data, -1, SQLITE_TRANSIENT);
+			
+
+			resText = concatenate("{ \"keyId\": \"", keyidctx, "\", \"version\": \"");
+			resText = concatenate(resText, strrchr(keyverctx, '/') + 1, "\", \"cipherText\": \"");
+			resText = concatenate(resText, encoded_data, "\", \"iv\": \"");
+			resText = concatenate(resText, ivBase64, "\" }");
+
+			//memset(ran, 0x00, sizeof(ran));
+			/*memset(iv, 0x00, AES_BLOCK_SIZE);*/
+
+			AR_AO_SQLITE->sqlite3_result_text(context, resText, -1, SQLITE_TRANSIENT);
+
+			//AR_AO_SQLITE->sqlite3_result_text(context, encoded_data, -1, SQLITE_TRANSIENT);
 		}
 
 		memset(aes_input, 0x00, 1024);
+		
 
 		AR_AO_LOG->log_trace("Before %s", "return");
 	}
