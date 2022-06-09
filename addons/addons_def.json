@@ -2,17 +2,9 @@
 	"addons":	
 	[
 		{
-			"name":	"MyPasswordProvider",
-			"type": "STARTUP",
-			"lib_path": "samples\\MyPasswordProvider\\MyPasswordProvider.dll",
-			//"lib_path": "samples/MyPasswordProvider/MyPasswordProvider.so",
-			"init_function":	"ar_addon_init"	
-		},
-		{
 			"name": "MyTransformation",
 			"type": "STARTUP",
-			"lib_path": "C:\\Program Files\\Attunity\\Replicate\\addons\\samples\\MyTransformation\\MyTransformation.dll",
-			//"lib_path": "samples/MyTransformation/MyTransformation.so",
+			"lib_path": "MyTransformation\\MyTransformation.dll",
 			"init_function": "ar_addon_init"
 		}
 	]

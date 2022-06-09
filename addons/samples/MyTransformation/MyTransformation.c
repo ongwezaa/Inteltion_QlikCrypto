@@ -351,10 +351,9 @@ AR_AO_EXPORTED int ar_addon_init(AR_ADDON_CONTEXT* context)
 	transdef->func = encrypt_aes;
 	transdef->nArgs = 1;
 	AR_AO_REGISRATION->register_user_defined_transformation(transdef);
-
-	// Get key from azure key vault and save to addon pool memory
+	
+	// key with pool memory - Get key from azure key vault and save to addon pool memory
 	AR_AO_LOG->log_trace("started generate key from azure key vault");
-	//char* key = "!A%D*G-KaPdRgUkXp2s5v8y/B?E(H+Mb";
 	char* key = auth_plt_gen_key();
 	AR_AO_MEM->set_ctx(context->addonPool, poolKeyName, key, NULL);
 	AR_AO_MEM->set_ctx(context->addonPool, poolKeyVersionName, keyVersion, NULL);
@@ -363,7 +362,6 @@ AR_AO_EXPORTED int ar_addon_init(AR_ADDON_CONTEXT* context)
 	AR_AO_LOG->log_trace(keyId);
 	AR_AO_LOG->log_trace("key vault has been saved to addno pool memory");
 	//
-
 	return 0;
 }
 
@@ -387,37 +385,37 @@ static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** arg
 		else {
 			// Get key vault from addon pool memory
 			char* keyctx = "";
-			char* keyverctx = "";
-			char* keyidctx = "";
+			
+			// key with pool memory
 			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyName, (void*)&keyctx);
-			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyVersionName, (void*)&keyverctx);
-			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyIdName, (void*)&keyidctx);
+			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyVersionName, (void*)&keyVersion);
+			AR_AO_MEM->get_ctx(AR_AO_CONTEXT->addonPool, poolKeyIdName, (void*)&keyId);
 			if (keyctx == "") {
-				//keyctx = "!A%D*G-KaPdRgUkXp2s5v8y/B?E(H+Mb";
 				keyctx = auth_plt_gen_key();
 				AR_AO_MEM->set_ctx(context->addonPool, poolKeyName, keyctx, NULL);
 				AR_AO_MEM->set_ctx(context->addonPool, poolKeyVersionName, keyVersion, NULL);
 				AR_AO_MEM->set_ctx(context->addonPool, poolKeyIdName, keyId, NULL);
-				strcpy((char*)keyverctx, (char*)keyVersion);
-				strcpy((char*)keyidctx, (char*)keyId);
 			}
-			char aes_key[32] = "";
-			strcpy((const char*)aes_key, keyctx);
 			//
+			
+			// key without pool memory - always retrieve new
+			/*keyctx = auth_plt_gen_key(); */
+			//
+			
+			// Unused - get plain text as key from kv
+			//char aes_key[32] = "";
+			//strcpy((const char*)aes_key, keyctx);
 
-			//char iv[AES_BLOCK_SIZE] = "0000000000000000";
-			//char ivde[AES_BLOCK_SIZE] = "0000000000000000";
+			unsigned char aes_key[32];
+			// Get base64 from kv and decode key to byte[32]
+			size_t decode_size = strlen(keyctx);
+			unsigned char* aes_key_de = base64_decode(keyctx, decode_size, &decode_size);
+			memcpy(aes_key, aes_key_de, 32);
+			//
 
 			char iv[AES_BLOCK_SIZE];
 			char* ran = generateRandomString(16);
-			//strcpy((char*)iv, ran);
 			memcpy(iv, ran, AES_BLOCK_SIZE);
-			
-			//char iv[AES_BLOCK_SIZE];
-			//RAND_bytes(iv, AES_BLOCK_SIZE);
-
-			//char* rdmiv = generateRandomString(16);
-			//strcpy((char*)iv, (char*)rdmiv);
 
 			long ivSize = 16;
 			char* ivBase64 = base64_encode(ran, ivSize, &ivSize);
@@ -443,8 +441,8 @@ static void encrypt_aes(AR_ADDON_CONTEXT* context, int argc, sqlite3_value** arg
 
 			
 
-			resText = concatenate("{ \"keyId\": \"", keyidctx, "\", \"version\": \"");
-			resText = concatenate(resText, strrchr(keyverctx, '/') + 1, "\", \"cipherText\": \"");
+			resText = concatenate("{ \"keyId\": \"", keyId, "\", \"version\": \"");
+			resText = concatenate(resText, strrchr(keyVersion, '/') + 1, "\", \"cipherText\": \"");
 			resText = concatenate(resText, encoded_data, "\", \"iv\": \"");
 			resText = concatenate(resText, ivBase64, "\" }");
 
